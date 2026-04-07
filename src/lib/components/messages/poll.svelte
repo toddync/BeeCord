@@ -198,7 +198,9 @@
                 if (!results) return;
 
                 const userId = e.getSender()!;
-                const answered = (sdk.M_POLL_RESPONSE.findIn(e.getContent()) as any)?.answers ?? [];
+                const answered =
+                    (sdk.M_POLL_RESPONSE.findIn(e.getContent()) as any)
+                        ?.answers ?? [];
 
                 const newUserVotesMap = {
                     ...results.userVotesMap,
@@ -238,7 +240,10 @@
 
         return () => {
             Matrix.client?.removeListener(sdk.RoomEvent.Timeline, ingestEvent);
-            Matrix.client?.removeListener(sdk.MatrixEventEvent.Decrypted, ingestEvent);
+            Matrix.client?.removeListener(
+                sdk.MatrixEventEvent.Decrypted,
+                ingestEvent,
+            );
         };
     });
 
@@ -275,20 +280,22 @@
             allVoteCount: Object.keys(newUserVotesMap).length,
         };
 
-        await Matrix.client.sendEvent(room.roomId, "org.matrix.msc3381.poll.response" as any, {
-            "org.matrix.msc3381.poll.response": { answers: newAnswers },
-            "m.relates_to": {
-                rel_type: "m.reference",
-                event_id: pollEventId,
+        await Matrix.client.sendEvent(
+            room.roomId,
+            "org.matrix.msc3381.poll.response" as any,
+            {
+                "org.matrix.msc3381.poll.response": { answers: newAnswers },
+                "m.relates_to": {
+                    rel_type: "m.reference",
+                    event_id: pollEventId,
+                },
             },
-        });
-
-        // getPollResults(room, pollEventId).then((r) => r && (results = r));
+        );
     }
 </script>
 
 <ChatBubbleMessage
-    class="max-w-sm min-w-56"
+    class="min-w-72"
     variant={isMe ? "sent" : "received"}
 >
     <div class="flex flex-col gap-3 p-1">
@@ -321,7 +328,11 @@
                         class="relative flex justify-between items-center gap-2"
                     >
                         <span class="flex gap-2">
-                            <Checkbox checked={voted} disabled class="opacity-100!"/>
+                            <Checkbox
+                                checked={voted}
+                                disabled
+                                class="opacity-100!"
+                            />
                             <span>
                                 {answer.text}
                             </span>

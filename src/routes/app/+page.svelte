@@ -15,7 +15,9 @@
         {:else if room.room_?.isCallRoom()}
             <Call {room} />
         {:else}
-            <Chat room={Rooms.rooms[Rooms.selectedRoom]} />
+            {#key room.roomId}
+                <Chat room={Rooms.rooms[Rooms.selectedRoom]} />
+            {/key}
         {/if}
     {:else}
         <Empty.Root></Empty.Root>

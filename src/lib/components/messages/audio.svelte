@@ -2,7 +2,7 @@
     import Rooms from "$lib/stores/Rooms.svelte";
     import { Pause, Play } from "@lucide/svelte";
     import * as sdk from "matrix-js-sdk";
-    import type { RoomMessageEventContent } from "matrix-js-sdk/lib/types";
+    import type { AudioContent } from "matrix-js-sdk/lib/types";
     import Button from "../ui/button/button.svelte";
 
     let {
@@ -17,7 +17,7 @@
         timestamp: string;
     } = $props();
 
-    const content: RoomMessageEventContent = event.getContent();
+    const content: AudioContent = event.getContent();
     const durationFromMetadata = (content.info?.duration ?? 0) / 1000;
 
     let objectUrl = $state<string | null>(null);
@@ -86,17 +86,17 @@
 
 {#if !isLoaded}
     <div
-        class="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-secondary w-56"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-2xl w-56 h-14.4 {isMe ? "bg-primary" : "bg-secondary "}"
     >
         <div
-            class="size-9 rounded-full bg-primary/10 animate-pulse shrink-0"
+            class="size-9 rounded-full animate-pulse shrink-0 {isMe ? "bg-primary-foreground/25" : "bg-primary/20"}"
         ></div>
         <div class="flex flex-col gap-2 flex-1">
             <div
-                class="h-1.5 rounded-full bg-primary/10 animate-pulse w-[55%] [animation-delay:100ms]"
+                class="h-1.5 rounded-full animate-pulse w-[55%] [animation-delay:100ms] {isMe ? "bg-primary-foreground/25" : "bg-primary/20"}"
             ></div>
             <div
-                class="h-1.5 rounded-full bg-primary/10 animate-pulse w-[80%] [animation-delay:200ms]"
+                class="h-1.5 rounded-full animate-pulse w-[80%] [animation-delay:200ms] {isMe ? "bg-primary-foreground/25" : "bg-primary/20"}"
             ></div>
         </div>
     </div>
@@ -118,7 +118,7 @@
     ></audio>
 
     <div
-        class="inline-flex items-center gap-2.5 px-3 py-2 min-w-52.5 max-w-67.5 rounded-lg shadow-sm transition-shadow hover:shadow-md
+        class="inline-flex items-center gap-2.5 px-3 py-2 min-w-52.5 max-w-67.5 rounded-lg shadow-sm transition-shadow hover:shadow-md h-14.4
             {isMe
             ? 'bg-primary rounded-br-none'
             : 'bg-secondary rounded-bl-none'}"

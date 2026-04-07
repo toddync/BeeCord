@@ -13,6 +13,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@chenglou/pretext": "^0.0.4",
     "@lucide/lab": "^0.1.2",
     "@matrix-org/matrix-sdk-crypto-wasm": "^18.0.0",
     "@tauri-apps/api": "^2",
@@ -29,7 +30,8 @@
     "matrix-encrypt-attachment": "^1.0.3",
     "matrix-js-sdk": "^41.2.0",
     "matrix-widget-api": "^1.17.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "svelte-tiny-virtual-list": "^3.0.1"
   },
   "devDependencies": {
     "@internationalized/date": "^3.12.0",

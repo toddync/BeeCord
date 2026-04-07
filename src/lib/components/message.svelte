@@ -29,7 +29,7 @@
     const MessageComponent = getMessageComponent(event);
 </script>
 
-<ChatBubble variant={isMe ? "sent" : "received"}>
+<ChatBubble variant={isMe ? "sent" : "received"} class={isMe ? "ml-auto" : "mr-auto"}>
     {#if !isMe}
         <Avatar
             id={member!.userId!}

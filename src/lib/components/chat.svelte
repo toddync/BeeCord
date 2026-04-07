@@ -5,6 +5,7 @@
     import BeeCord from "$lib/stores/BeeCord.svelte";
     import Calls from "$lib/stores/Calls.svelte";
     import Matrix from "$lib/stores/Matrix.svelte";
+    import type { RoomState } from "$lib/stores/Rooms.svelte";
     import {
         EllipsisVertical,
         Paperclip,
@@ -13,11 +14,9 @@
         Video,
     } from "lucide-svelte";
     import * as sdk from "matrix-js-sdk";
-    import Avatar from "./avatar.svelte";
-    import Message from "./message.svelte";
-    import ChatBubbleMessage from "./ui/chat/chat-bubble/chat-bubble-message.svelte";
-    import ChatBubble from "./ui/chat/chat-bubble/chat-bubble.svelte";
-    import type { RoomState } from "$lib/stores/Rooms.svelte";
+    //@ts-ignore
+    import MessageList from "./messages/message-list.svelte";
+    import { onMount } from "svelte";
 
     let { room }: { room: RoomState } = $props();
     let messages = $state<sdk.MatrixEvent[]>([]);
@@ -26,30 +25,31 @@
     // -- State --
     let inputText = $state("");
     let fileInput: HTMLInputElement;
-
     let selectedFiles: FileList | null = $state(null);
+
 
     function updateMessages() {
         if (!room) {
             messages = [];
             return;
         }
-        messages = room.room_?.getLiveTimeline()
-            .getEvents()
-            .filter(
-                (e) =>
-                    e.getType() === "m.room.message" ||
-                    e.getType() === "org.matrix.msc3381.poll.start",
-            ) || [];
+
+        messages =
+            room.room_
+                ?.getLiveTimeline()
+                .getEvents()
+                .filter(
+                    (e) =>
+                        e.getType() === "m.room.message" ||
+                        e.getType() === "org.matrix.msc3381.poll.start",
+                ) || [];
     }
 
     async function sendMessage() {
         if (!inputText.trim() || !Matrix.client || !room) return;
-
-        let text = inputText.trim();
+        const text = inputText.trim();
         inputText = "";
         Matrix.client?.sendTyping(room.roomId, false, 10);
-
         await Matrix.client.sendTextMessage(room.roomId, text);
     }
 
@@ -60,7 +60,7 @@
         }
     }
 
-    $effect(() => {
+    onMount(() => {
         updateMessages();
 
         const onTimelineEvent = (
@@ -88,6 +88,7 @@
                 );
             });
         }
+
         if (room) {
             room.room_?.on(sdk.RoomEvent.LocalEchoUpdated, onTimelineEvent);
         }
@@ -140,7 +141,6 @@
             >
                 <Phone class="w-4 h-4 stroke-[1.5]" />
             </Button>
-
             <Button
                 variant="secondary"
                 size="icon"
@@ -148,19 +148,13 @@
             >
                 <Video class="w-4 h-4 stroke-[1.5]" />
             </Button>
-
             <Button
                 variant="secondary"
                 size="icon"
                 class="cursor-pointer"
                 onclick={() => {
-                    console.log(
-                        room.room_?.getJoinRule(),
-                        room.room_?.canInvite(Matrix.user_id!),
-                    );
                     if (room.room_?.canInvite(Matrix.user_id!)) {
-                        let id = prompt("UserId") || "";
-
+                        const id = prompt("UserId") || "";
                         Matrix.client?.invite(room.roomId, id);
                     }
                 }}
@@ -170,37 +164,7 @@
         </div>
     </div>
 
-    <div class="min-h-0 overflow-hidden">
-        <div class="relative h-full w-full">
-            <div class="flex h-full w-full flex-col overflow-y-auto">
-                <div class="flex flex-col gap-6 p-4">
-                    {#each messages as item (item)}
-                        <Message event={item} room={room.room_!} />
-                    {/each}
-
-                    {#if typing.length > 0}
-                        <ChatBubble variant="received">
-                            {#each typing as typer, i (typer)}
-                                {@const member = room.room_?.getMember(typer)!}
-
-                                <span class={(i > 0 && "-ml-1/3") || ""}>
-                                    <Avatar
-                                        name={member.name}
-                                        url={member.getMxcAvatarUrl()}
-                                        id={member.userId}
-                                    />
-                                </span>
-                            {/each}
-                            <ChatBubbleMessage
-                                variant={"received"}
-                                isLoading={true}
-                            ></ChatBubbleMessage>
-                        </ChatBubble>
-                    {/if}
-                </div>
-            </div>
-        </div>
-    </div>
+    <MessageList {room} bind:typing bind:messages />
 
     <div class="p-3 pt-0">
         <div
@@ -216,7 +180,6 @@
                 placeholder="Message {room?.name || 'room'}..."
                 class="min-h-12 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent resize-none p-3 shadow-none overflow-y-auto"
             />
-
             <Button
                 variant="ghost"
                 size="icon"
@@ -225,7 +188,6 @@
             >
                 <Paperclip class="h-5 w-5" />
             </Button>
-
             <Button
                 size="icon"
                 class="my-auto mr-1 h-8 w-8 shrink-0 rounded-md"

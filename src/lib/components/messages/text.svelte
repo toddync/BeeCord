@@ -21,7 +21,7 @@
     class="max-w-2xl min-w-20"
     variant={isMe ? "sent" : "received"}
 >
-    <p class="break-all whitespace-pre-line min-w-12">
+    <p class="break-word whitespace-pre-wrap min-w-12">
         {content.body}
     </p>
     <ChatBubbleTimestamp class="whitespace-pre" {timestamp} />

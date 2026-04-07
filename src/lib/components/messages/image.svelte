@@ -1,9 +1,9 @@
 <script lang="ts">
+    import Rooms from "$lib/stores/Rooms.svelte";
     import * as sdk from "matrix-js-sdk";
+    import type { ImageContent } from "matrix-js-sdk/lib/types";
     import ChatBubbleMessage from "../ui/chat/chat-bubble/chat-bubble-message.svelte";
     import ChatBubbleTimestamp from "../ui/chat/chat-bubble/chat-bubble-timestamp.svelte";
-    import type { MediaEventContent } from "matrix-js-sdk/lib/types";
-    import Rooms from "$lib/stores/Rooms.svelte";
 
     let {
         event,
@@ -16,9 +16,17 @@
         isMe: boolean;
         timestamp: string;
     } = $props();
-    const content: MediaEventContent = event.getContent();
+    const content: ImageContent = event.getContent();
 
     let objectUrl = $state<string | null>(null);
+    let h = Math.min(
+        content.info?.h || content.info?.thumbnail_info?.h || 80,
+        384,
+    );
+    let w = Math.min(
+        content.info?.w || content.info?.thumbnail_info?.w || 80,
+        384,
+    );
 
     $effect(() => {
         let revoked = false;
@@ -36,20 +44,20 @@
     });
 </script>
 
-<ChatBubbleMessage
-    class="max-w-2xl min-w-20"
-    variant={isMe ? "sent" : "received"}
->
+<ChatBubbleMessage class="min-w-20" variant={isMe ? "sent" : "received"}>
     {#if objectUrl}
         <img
             src={objectUrl}
             alt={content.body}
-            height={content.info?.h}
-            width={content.info?.w}
-            class="rounded-md object-contain max-h-96 max-w-96"
+            height={h}
+            width={w}
+            class="rounded-md object-contain max-h-96"
         />
     {:else}
-        <div class="rounded-md bg-muted animate-pulse mb-1" style="height: {content.info?.h || content.file?.width || 80}px; width: {content.info?.w || 80}px"></div>
+        <div
+            class="rounded-md bg-muted animate-pulse max-h-96 max-w-96"
+            style=" height: {h}px; width: {w}px"
+        ></div>
     {/if}
     <ChatBubbleTimestamp class="whitespace-pre" {timestamp} />
 </ChatBubbleMessage>
