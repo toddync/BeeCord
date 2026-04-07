@@ -1,8 +1,14 @@
+import { invoke } from "@tauri-apps/api/core";
 import { decryptAttachment } from "matrix-encrypt-attachment";
 import * as sdk from "matrix-js-sdk";
 import type { MediaEventContent } from "matrix-js-sdk/lib/types";
-import BeeCord from "./BeeCord.svelte";
 import Matrix from "./Matrix.svelte";
+
+export interface MediaResult {
+    data: string; // base64
+    content_type: string;
+    from_cache: boolean;
+}
 
 export class RoomState {
     name: string = $state("");
@@ -212,63 +218,63 @@ class RoomsStore {
         });
     }
 
+    b64ToObjectUrl(b64: string, mimeType: string): string {
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+    }
+
     async fetchMxcObjectUrl(mxc: string): Promise<string | null> {
         if (!mxc?.startsWith("mxc://")) return null;
         const homeserver = Matrix.client?.getHomeserverUrl();
         if (!homeserver) return null;
 
-        const downloadUrl = `${homeserver}/_matrix/client/v1/media/download/${mxc.slice(6)}`;
-        const res = await BeeCord.fetch(downloadUrl, {
-            headers: {
-                Authorization: `Bearer ${Matrix.access_token ?? Matrix.client?.getAccessToken()}`,
-            },
+        const result = await invoke<MediaResult | null>("fetch_mxc_media", {
+            mxc,
+            homeserver,
+            token: Matrix.access_token ?? Matrix.client?.getAccessToken() ?? "",
         });
-        if (!res.ok) return null;
 
-        return URL.createObjectURL(await res.blob());
+        if (!result) return null;
+        return this.b64ToObjectUrl(result.data, result.content_type);
     }
 
     async loadMediaObjectUrl(
         content: MediaEventContent,
     ): Promise<string | null> {
         const token = Matrix.access_token ?? Matrix.client?.getAccessToken();
-        if (!token) {
-            console.error("No access token available");
-            return null;
-        }
+        if (!token) return null;
+        const homeserver = Matrix.client?.getHomeserverUrl();
+        if (!homeserver) return null;
+
+        const mxc =
+            content.file?.url ?? content.info?.thumbnail_url ?? content.url;
+        if (!mxc?.startsWith("mxc://")) return null;
+
+        const result = await invoke<MediaResult | null>("load_media", {
+            mxc,
+            homeserver,
+            token,
+            encrypted: !!content.file?.url,
+        });
+
+        if (!result) return null;
 
         if (content.file?.url) {
-            const homeserver = Matrix.client?.getHomeserverUrl();
-            if (!homeserver || !content.file.url.startsWith("mxc://"))
-                return null;
-
-            const downloadUrl = `${homeserver}/_matrix/client/v1/media/download/${content.file.url.slice(6)}`;
-
-            const res = await BeeCord.fetch(downloadUrl, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) {
-                console.error(
-                    "Failed to fetch encrypted media",
-                    res.status,
-                    await res.text(),
-                );
-                return null;
-            }
-
-            const decrypted = await decryptAttachment(
-                await res.arrayBuffer(),
-                content.file,
+            // Rust fetched the ciphertext — decrypt here then blob it
+            const raw = Uint8Array.from(atob(result.data), (c) =>
+                c.charCodeAt(0),
             );
-            const blob = new Blob([decrypted], {
-                type: content.info?.mimetype ?? "image/jpeg",
-            });
-            return URL.createObjectURL(blob);
-        } else {
-            return this.fetchMxcObjectUrl(
-                content.info?.thumbnail_url ?? content.url,
+            const decrypted = await decryptAttachment(raw.buffer, content.file);
+            return URL.createObjectURL(
+                new Blob([decrypted], {
+                    type: content.info?.mimetype ?? "image/jpeg",
+                }),
             );
         }
+
+        return this.b64ToObjectUrl(result.data, result.content_type);
     }
 
     getColorFromId(roomId: string): [string, string] {

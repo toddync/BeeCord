@@ -1,8 +1,5 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod media;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,9 +16,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![greet]);
+        .invoke_handler(tauri::generate_handler![
+            media::clear_media_cache,
+            media::fetch_mxc_media,
+            media::load_media,
+        ]);
 
     builder
+        .setup(|app| {
+            let cache = media::init_cache(app.handle())
+                .expect("Failed to initialise media cache");
+            app.manage(cache);
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
