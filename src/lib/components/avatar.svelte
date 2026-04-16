@@ -8,7 +8,7 @@
         url = $bindable(""),
         name = $bindable(""),
         ...props
-    }: { id: string; url: string | null | undefined; name: string } = $props();
+    }: { id: string; url: string | null | undefined; name: string, class?: string } = $props();
 
     let objectUrl = $state<string | null>(null);
     let color = Rooms.getColorFromId(id);
@@ -34,6 +34,7 @@
     <Tooltip.Trigger>
         <Avatar.Root {...props}>
             <Avatar.Image src={objectUrl} />
+
             <Avatar.AvatarFallback
                 {...props}
                 style={`background: ${color[1]}; color: hsl(${color[0]})`}

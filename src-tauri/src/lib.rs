@@ -3,7 +3,7 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default();
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_fs::init());
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
@@ -24,8 +24,7 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            let cache = media::init_cache(app.handle())
-                .expect("Failed to initialise media cache");
+            let cache = media::init_cache(app.handle()).expect("Failed to initialise media cache");
             app.manage(cache);
             Ok(())
         })

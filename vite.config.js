@@ -10,14 +10,6 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
     plugins: [tailwindcss(), sveltekit()],
 
-    build: {
-        rollupOptions: {
-            input: {
-                "sw": "src/sw.ts",
-            },
-        },
-    },
-
     resolve: {
         alias: {
             $lib: path.resolve("./src/lib"),

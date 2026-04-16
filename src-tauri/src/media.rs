@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use tokio::sync::Mutex;
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_http::reqwest;
 use tokio::fs;
+use tokio::sync::Mutex;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,8 +52,7 @@ pub fn init_cache(app: &AppHandle) -> Result<MediaCache, String> {
         .map_err(|e| format!("Could not resolve cache dir: {e}"))?
         .join("media");
 
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("Could not create media cache dir: {e}"))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create media cache dir: {e}"))?;
 
     // Load existing index if present, otherwise start empty.
     let index = if index_path(&dir).exists() {
@@ -66,7 +65,10 @@ pub fn init_cache(app: &AppHandle) -> Result<MediaCache, String> {
         HashMap::new()
     };
 
-    Ok(MediaCache { index: Mutex::new(index), dir })
+    Ok(MediaCache {
+        index: Mutex::new(index),
+        dir,
+    })
 }
 
 // ── Persistence helpers ───────────────────────────────────────────────────────
@@ -85,13 +87,18 @@ async fn persist_entry(
         .await
         .map_err(|e| format!("Failed to write media blob: {e}"))?;
 
-    let entry = CacheEntry { filename, content_type: content_type.to_string() };
+    let entry = CacheEntry {
+        filename,
+        content_type: content_type.to_string(),
+    };
 
     let serialized = {
         let mut guard = cache.index.lock().await;
         guard.insert(url.to_string(), entry);
-        serde_json::to_string(&CacheIndex { entries: guard.clone() })
-            .map_err(|e| format!("Failed to serialise cache index: {e}"))?
+        serde_json::to_string(&CacheIndex {
+            entries: guard.clone(),
+        })
+        .map_err(|e| format!("Failed to serialise cache index: {e}"))?
     }; // ← guard dropped before the write await
 
     fs::write(index_path(&cache.dir), serialized)

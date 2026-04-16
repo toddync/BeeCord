@@ -30,18 +30,11 @@
         await room?.processPollEvents(timelineWindow.getEvents());
         let poll = room?.polls.get(pollID);
         if (!poll) {
-            console.log("No poll:", poll);
             return; // wrong Poll
         }
 
         let allResponses = await getAllResponses(poll);
-        console.log("allResponses", allResponses);
-        console.log(
-            "allResponses.getRelations().length:",
-            allResponses.getRelations().length,
-        );
         if (!allResponses) {
-            console.log("No responses!", allResponses);
             return;
         }
 
@@ -106,7 +99,6 @@
                 Matrix.client!.decryptEventIfNeeded(event),
             ),
         );
-        console.log("allRelations.events.length:", allRelations.events.length);
         // Get first M_POLL_END event
         // FIX: sdk.M_POLL_END (was bare M_POLL_END)
         let pollEndEvents = allRelations.events.filter((event) =>
@@ -331,7 +323,7 @@
                             <Checkbox
                                 checked={voted}
                                 disabled
-                                class="opacity-100!"
+                                class="opacity-100! {pollEnded ? "" : "cursor-pointer!"}"
                             />
                             <span>
                                 {answer.text}

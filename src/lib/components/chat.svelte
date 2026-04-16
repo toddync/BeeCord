@@ -5,7 +5,10 @@
     import BeeCord from "$lib/stores/BeeCord.svelte";
     import Calls from "$lib/stores/Calls.svelte";
     import Matrix from "$lib/stores/Matrix.svelte";
+    import Rooms from "$lib/stores/Rooms.svelte";
+    import Sidebars from "$lib/stores/Sidebars.svelte";
     import type { RoomState } from "$lib/stores/Rooms.svelte";
+    import { createHotkey } from "@tanstack/svelte-hotkeys";
     import {
         EllipsisVertical,
         Paperclip,
@@ -21,12 +24,33 @@
     let { room }: { room: RoomState } = $props();
     let messages = $state<sdk.MatrixEvent[]>([]);
     let typing = $state<string[]>([]);
+    let atBottom = $state(true); // tracks whether the message list is scrolled to the bottom
+    let isPaginating = $state(false);
+    let allLoaded = $state(false);
 
     // -- State --
     let inputText = $state("");
     let fileInput: HTMLInputElement;
     let selectedFiles: FileList | null = $state(null);
 
+    createHotkey("Mod+/", () => {
+        Sidebars.right = !Sidebars.right;
+    });
+
+    // Clear the per-room media blob cache whenever we switch rooms
+    $effect(() => {
+        const _ = room.roomId; // track room changes
+        allLoaded = false;
+        return () => Rooms.clearMediaCache();
+    });
+
+    let updateTimeout: number;
+    function scheduleUpdateMessages() {
+        if (updateTimeout) clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(() => {
+            updateMessages();
+        }, 10) as unknown as number;
+    }
 
     function updateMessages() {
         if (!room) {
@@ -40,9 +64,61 @@
                 .getEvents()
                 .filter(
                     (e) =>
+                        e.getType() === "m.sticker" ||
                         e.getType() === "m.room.message" ||
                         e.getType() === "org.matrix.msc3381.poll.start",
                 ) || [];
+    }
+
+    /**
+     * Sends a read receipt for the given event, suppressing any errors
+     * (e.g. if the user has already sent a more recent receipt).
+     */
+    async function markRead(event: sdk.MatrixEvent | null | undefined) {
+        if (!Matrix.client || !event) return;
+        try {
+            await Matrix.client.sendReadReceipt(event);
+        } catch (e) {
+            // Non-fatal – e.g. already read, or no permission
+            console.debug("[read-receipt] failed:", e);
+        }
+    }
+
+    /**
+     * Marks the latest message in the current room as read.
+     * Called when the room is first opened or switched to.
+     */
+    function markRoomRead() {
+        if (!room?.room_) return;
+        const timeline = room.room_.getLiveTimeline().getEvents();
+        // Find the last non-state event that the SDK can receipt
+        for (let i = timeline.length - 1; i >= 0; i--) {
+            const e = timeline[i];
+            if (!e.isState() && e.getId()) {
+                markRead(e);
+                return;
+            }
+        }
+    }
+
+    async function handlePaginate() {
+        if (isPaginating || allLoaded || !Matrix.client || !room?.room_) return;
+
+        const timeline = room.room_.getLiveTimeline();
+        if (!timeline.getPaginationToken(sdk.EventTimeline.BACKWARDS)) {
+            allLoaded = true;
+            return;
+        }
+
+        isPaginating = true;
+        try {
+            await Matrix.client.scrollback(room.room_, 50);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isPaginating = false;
+            scheduleUpdateMessages();
+        }
     }
 
     async function sendMessage() {
@@ -63,20 +139,40 @@
     onMount(() => {
         updateMessages();
 
+        // Mark the room as read when we first open it
+        markRoomRead();
+
         const onTimelineEvent = (
             event: sdk.MatrixEvent,
             eventRoom?: sdk.Room,
         ) => {
             if (!eventRoom || eventRoom.roomId === room?.roomId) {
-                updateMessages();
+                scheduleUpdateMessages();
+
+                // If the user is looking at the bottom of the chat and the
+                // window is focused, immediately mark the incoming event read.
+                if (atBottom && document.hasFocus() && !isPaginating) {
+                    markRead(event);
+                }
             }
         };
 
         const onMatrixEvent = (event: sdk.MatrixEvent) => {
             if (event.getRoomId() === room?.roomId) {
-                updateMessages();
+                scheduleUpdateMessages();
+
+                if (atBottom && document.hasFocus() && !isPaginating) {
+                    markRead(event);
+                }
             }
         };
+
+        // When the window regains focus, mark the latest message read
+        // (the user may have received messages while the window was blurred).
+        const onWindowFocus = () => {
+            if (atBottom) markRoomRead();
+        };
+        window.addEventListener("focus", onWindowFocus);
 
         if (Matrix.client) {
             Matrix.client.on(sdk.RoomEvent.Timeline, onTimelineEvent);
@@ -94,6 +190,8 @@
         }
 
         return () => {
+            window.removeEventListener("focus", onWindowFocus);
+
             if (Matrix.client) {
                 Matrix.client.removeListener(
                     sdk.RoomEvent.Timeline,
@@ -116,9 +214,13 @@
             }
         };
     });
-</script>
 
-<FileUploadOverlay room={room.room_!} bind:selectedFiles />
+    // When the user switches to this room (room prop changes), re-mark as read.
+    $effect(() => {
+        const _ = room?.roomId;
+        markRoomRead();
+    });
+</script>
 
 <div
     class="grid grid-cols-1 grid-rows-[3rem_1fr_5rem] overflow-hidden w-full relative {([
@@ -129,6 +231,7 @@
         'h-full') ||
         'h-[calc(100svh-32px)]'}"
 >
+    <FileUploadOverlay room={room.room_!} bind:selectedFiles />
     <div
         class="flex items-center justify-between p-3 border-b border-border bg-background/50 backdrop-blur-sm z-10 w-full shrink-0"
     >
@@ -153,10 +256,7 @@
                 size="icon"
                 class="cursor-pointer"
                 onclick={() => {
-                    if (room.room_?.canInvite(Matrix.user_id!)) {
-                        const id = prompt("UserId") || "";
-                        Matrix.client?.invite(room.roomId, id);
-                    }
+                    Sidebars.right = !Sidebars.right;
                 }}
             >
                 <EllipsisVertical class="w-4 h-4 stroke-[1.5]" />
@@ -164,7 +264,15 @@
         </div>
     </div>
 
-    <MessageList {room} bind:typing bind:messages />
+    <MessageList
+        {room}
+        bind:typing
+        bind:messages
+        bind:atBottom
+        onMarkRead={markRead}
+        onPaginate={handlePaginate}
+        {isPaginating}
+    />
 
     <div class="p-3 pt-0">
         <div

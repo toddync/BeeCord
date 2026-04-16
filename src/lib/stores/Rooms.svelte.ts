@@ -1,11 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { decryptAttachment } from "matrix-encrypt-attachment";
 import * as sdk from "matrix-js-sdk";
-import type { MediaEventContent } from "matrix-js-sdk/lib/types";
+import type { ImageInfo, MediaEventContent, VideoInfo } from "matrix-js-sdk/lib/types";
+import BeeCord from "./BeeCord.svelte";
 import Matrix from "./Matrix.svelte";
 
 export interface MediaResult {
-    data: string; // base64
+    data: string;
     content_type: string;
     from_cache: boolean;
 }
@@ -41,9 +42,11 @@ export class RoomState {
     }
 
     patch(event: sdk.RoomEvent, ...args: unknown[]) {
+        const toStartOfTimeline = args[2] as boolean;
         switch (event) {
             case sdk.RoomEvent.Name:
-                this.name = this.room.name;
+                if (!toStartOfTimeline)
+                    this.name = this.room.name;
                 break;
             case sdk.RoomEvent.MyMembership:
                 this.membership = args[1] as string;
@@ -51,18 +54,40 @@ export class RoomState {
             case sdk.RoomEvent.UnreadNotifications:
                 this.unreadCount = this.room.getUnreadNotificationCount();
                 break;
-            case sdk.RoomEvent.Timeline:
+            case sdk.RoomEvent.Receipt:
                 this.computeUnread();
-                Matrix.client?.decryptEventIfNeeded(args[0] as sdk.MatrixEvent);
-                let event = args[0] as sdk.MatrixEvent;
+                break;
+            case sdk.RoomEvent.Timeline:
+                const matrixEvent = args[0] as sdk.MatrixEvent;
 
-                if (event.getType() === "m.room.message") {
-                    // || event.getType().includes("poll")
-                    this.lastMessage = event;
-                } else if (event.getType() === "m.room.avatar") {
-                    this.avatar = event.getContent().url;
-                } else if (event.getType() === "m.room.name") {
-                    this.name = event.getContent().name;
+                if (!toStartOfTimeline) {
+                    this.computeUnread();
+                    if (matrixEvent.getType() === "m.room.message"
+                        || matrixEvent.getType() === "m.sticker"
+                    ) {
+                        // || matrixEvent.getType().includes("poll")
+                        if (!this.lastMessage || matrixEvent.getTs() > this.lastMessage?.getTs())
+                            this.lastMessage = matrixEvent;
+                    } else if (matrixEvent.getType() === "m.room.avatar") {
+                        this.avatar = matrixEvent.getContent().url;
+                    } else if (matrixEvent.getType() === "m.room.name") {
+                        this.name = matrixEvent.getContent().name;
+                    }
+                }
+
+                Matrix.client?.decryptEventIfNeeded(matrixEvent);
+
+                // Play notification sound only for live (just-arrived) messages —
+                // args[4] is IRoomTimelineData; liveEvent is false during initial sync.
+                if (
+                    !toStartOfTimeline &&
+                    this.isCountable(matrixEvent) &&
+                    (args[4] as { liveEvent?: boolean })?.liveEvent &&
+                    (this.roomId !== Rooms.selectedRoom || !document.hasFocus())
+                ) {
+                    BeeCord.notification.currentTime = 0;
+                    BeeCord.notification.volume = 0.5;
+                    BeeCord.notification.play().catch(() => { });
                 }
 
                 break;
@@ -121,8 +146,13 @@ class RoomsStore {
     rooms: Record<string, RoomState> = $state({});
     spaces: Record<string, sdk.Room & { childs: string[] }> = $state({});
 
+    /** Persistent object-URL cache keyed by mxc:// URI to avoid redundant Tauri IPC calls */
+    mediaCache = $state(new Map<string, string>());
+
     selectedRoom: string = $state("");
     selectedSpace: string = $state("");
+
+    ready: boolean = $state(false);
 
     start() {
         Matrix.client?.on(sdk.ClientEvent.Sync, async (state) => {
@@ -140,29 +170,35 @@ class RoomsStore {
                     delete this.rooms[r.roomId];
                 });
 
+            let hierarchyPromises = [];
             for (const key of Object.keys(this.spaces)) {
                 this.spaces[key].childs = [];
 
-                try {
-                    const hierarchy = await Matrix.client?.getRoomHierarchy(
-                        key,
-                        50,
-                        1,
-                    );
+                hierarchyPromises.push((async () => {
+                    try {
+                        const hierarchy = await Matrix.client?.getRoomHierarchy(
+                            key,
+                            50,
+                            1,
+                        );
 
-                    const children: sdk.HierarchyRoom[] = (
-                        hierarchy?.rooms ?? []
-                    ).filter((r) => r.room_id !== key);
-                    children.forEach((child) => {
-                        this.addChildren(key, child.room_id);
-                    });
-                } catch (err) {
-                    console.error(
-                        `Failed to get hierarchy for space ${key}`,
-                        err,
-                    );
-                }
+                        const children: sdk.HierarchyRoom[] = (
+                            hierarchy?.rooms ?? []
+                        ).filter((r) => r.room_id !== key);
+                        children.forEach((child) => {
+                            this.addChildren(key, child.room_id);
+                        });
+                    } catch (err) {
+                        console.error(
+                            `Failed to get hierarchy for space ${key}`,
+                            err,
+                        );
+                    }
+                })());
             }
+
+            await Promise.all(hierarchyPromises);
+            this.ready = true;
         });
 
         Matrix.client?.on(sdk.RoomStateEvent.Events, (e) => {
@@ -210,7 +246,7 @@ class RoomsStore {
             (e, err) =>
                 !err &&
                 e.getRoomId() &&
-                this.rooms[e.getRoomId()]?.patch(sdk.RoomEvent.Timeline, e),
+                this.rooms[e.getRoomId()!]?.patch(sdk.RoomEvent.Timeline, e),
         );
 
         Matrix.client?.on(sdk.ClientEvent.Room, (room) => {
@@ -230,6 +266,10 @@ class RoomsStore {
         const homeserver = Matrix.client?.getHomeserverUrl();
         if (!homeserver) return null;
 
+        if (this.mediaCache.has(mxc)) {
+            return this.mediaCache.get(mxc)!;
+        }
+
         const result = await invoke<MediaResult | null>("fetch_mxc_media", {
             mxc,
             homeserver,
@@ -237,7 +277,11 @@ class RoomsStore {
         });
 
         if (!result) return null;
-        return this.b64ToObjectUrl(result.data, result.content_type);
+        let url = `data:${result!.content_type};base64,${result!.data}`;
+        // this.b64ToObjectUrl(result!.data, result!.content_type)
+
+        this.mediaCache.set(mxc, url);
+        return url;
     }
 
     async loadMediaObjectUrl(
@@ -249,8 +293,17 @@ class RoomsStore {
         if (!homeserver) return null;
 
         const mxc =
-            content.file?.url ?? content.info?.thumbnail_url ?? content.url;
+            content.file?.url ??
+            (content.info as ImageInfo | VideoInfo | undefined)
+                ?.thumbnail_url ??
+            content.url;
         if (!mxc?.startsWith("mxc://")) return null;
+
+        // Return cached object URL if available — avoids redundant Tauri IPC calls
+        // when virtual-list components are unmounted/remounted during scrolling.
+        if (this.mediaCache.has(mxc)) {
+            return this.mediaCache.get(mxc)!;
+        }
 
         const result = await invoke<MediaResult | null>("load_media", {
             mxc,
@@ -261,20 +314,35 @@ class RoomsStore {
 
         if (!result) return null;
 
+        let objectUrl: string;
+
         if (content.file?.url) {
             // Rust fetched the ciphertext — decrypt here then blob it
             const raw = Uint8Array.from(atob(result.data), (c) =>
                 c.charCodeAt(0),
             );
             const decrypted = await decryptAttachment(raw.buffer, content.file);
-            return URL.createObjectURL(
+            objectUrl = URL.createObjectURL(
                 new Blob([decrypted], {
                     type: content.info?.mimetype ?? "image/jpeg",
                 }),
             );
+        } else {
+            objectUrl = `data:${content.info?.mimetype ?? "image/jpeg"};base64,${result!.data}`
+            // this.b64ToObjectUrl(result.data, result.content_type);
         }
 
-        return this.b64ToObjectUrl(result.data, result.content_type);
+        this.mediaCache.set(mxc, objectUrl);
+        return objectUrl;
+    }
+
+    /** Revokes all cached object URLs and clears the media cache.
+     *  Call when switching rooms to prevent unbounded memory growth. */
+    clearMediaCache() {
+        for (const url of this.mediaCache.values()) {
+            URL.revokeObjectURL(url);
+        }
+        this.mediaCache.clear();
     }
 
     getColorFromId(roomId: string): [string, string] {

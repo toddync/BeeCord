@@ -19,23 +19,22 @@
         isMe: boolean;
         timestamp: string;
     } = $props();
+    // svelte-ignore state_referenced_locally
     const content: VideoContent = event.getContent();
 
     let objectUrl = $state<string | null>(null);
-    let h = Math.min(
-        content.info?.h || content.info?.thumbnail_info?.h || 80,
-        384,
-    );
-    let w = Math.min(
-        content.info?.w || content.info?.thumbnail_info?.w || 80,
-        384,
-    );
+    let h = content.info?.h || content.info?.thumbnail_info?.h || 80;
+    let w = content.info?.w || content.info?.thumbnail_info?.w || 80;
 
     $effect(() => {
-        return;
+        // return;
         let revoked = false;
         Rooms.loadMediaObjectUrl(content).then((url) => {
-            if (!revoked && url) objectUrl = url;
+            if (!revoked && url)
+                objectUrl = url.replace(
+                    "data:image/jpeg",
+                    `data:${content.info?.mimetype || "image/jpeg"}`,
+                );
         });
         return () => {
             revoked = true;
@@ -47,21 +46,20 @@
     });
 </script>
 
-<ChatBubbleMessage
-    class="max-w-2xl min-w-20"
-    variant={isMe ? "sent" : "received"}
->
+<ChatBubbleMessage class="min-w-20" variant={isMe ? "sent" : "received"}>
     {#if objectUrl}
         <!-- svelte-ignore a11y_media_has_caption -->
         <video
+            class="rounded-md object-contain"
             src={objectUrl}
+            height={h}
+            width={w}
             controls
-            class="rounded-md object-contain max-h-96 max-w-96"
         ></video>
     {:else}
         <div
             class="rounded-md bg-muted animate-pulse"
-            style=" height: {h}px; width: {w}px"
+            style="height: {h}px; width: {w}px"
         ></div>
     {/if}
     <ChatBubbleTimestamp class="whitespace-pre" {timestamp} />

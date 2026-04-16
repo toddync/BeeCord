@@ -7,23 +7,27 @@
     import Matrix from "$lib/stores/Matrix.svelte";
     import Verification from "$lib/stores/Verification.svelte";
     import SecretStorageModal from "$lib/components/SecretStorageModal.svelte";
+    import Sidebars from "$lib/stores/Sidebars.svelte";
+    import RightSidebar from "$lib/components/right-sidebar.svelte";
 
     let { children } = $props();
 
     $effect(() => {
         Matrix.client?.setPresence({
-            presence: "online"
-        })
+            presence: "online",
+        });
 
-        return  () => {
+        return () => {
             Matrix.client?.setPresence({
-            presence: "offline"
-        })
-        }
-    })
+                presence: "offline",
+            });
+        };
+    });
 
     async function handleSetupSecureBackup() {
-        const passphrase = window.prompt("Enter a strong passphrase to secure your backup:");
+        const passphrase = window.prompt(
+            "Enter a strong passphrase to secure your backup:",
+        );
         if (passphrase) {
             try {
                 await Matrix.setupSecretStorage(passphrase);
@@ -37,7 +41,7 @@
     }
 </script>
 
-<Sidebar.Provider>
+<Sidebar.Provider bind:open={Sidebars.left}>
     <ElementCallWidget />
     {#if Matrix.isDeviceVerified !== null && !Matrix.isDeviceVerified}
         <Card.Root class="fixed bottom-5 right-5 z-50">
@@ -50,12 +54,12 @@
                         Verify Session
                     </Button>
                     {#if !Matrix.hasSecretStorage}
-                    <Button
-                        class="bg-blue-500 text-white font-semibold px-4 py-2 rounded-md transition-all hover:bg-blue-400 whitespace-nowrap"
-                        onclick={handleSetupSecureBackup}
-                    >
-                        Setup Secure Backup
-                    </Button>
+                        <Button
+                            class="bg-blue-500 text-white font-semibold px-4 py-2 rounded-md transition-all hover:bg-blue-400 whitespace-nowrap"
+                            onclick={handleSetupSecureBackup}
+                        >
+                            Setup Secure Backup
+                        </Button>
                     {/if}
                 </div>
             </Card.Content>
@@ -76,7 +80,10 @@
     {/if}
 
     <AppSidebar>
+        <!-- <Sidebar.Provider bind:open={Sidebars.right} style="--sidebar-width: 18rem;"> -->
         {@render children()}
+        <!-- <RightSidebar /> -->
+        <!-- </Sidebar.Provider> -->
     </AppSidebar>
 
     <SecretStorageModal />

@@ -17,6 +17,7 @@
         timestamp: string;
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     const content: AudioContent = event.getContent();
     const durationFromMetadata = (content.info?.duration ?? 0) / 1000;
 
@@ -65,19 +66,18 @@
     }
 
     $effect(() => {
-        let revoked = false;
+        let cancelled = false;
         Rooms.loadMediaObjectUrl(content).then((url) => {
-            if (!revoked && url) {
+            if (!cancelled && url) {
                 objectUrl = url;
                 isLoaded = true;
             }
         });
+        // Do NOT revoke the URL — it is owned by Rooms.mediaCache and shared
+        // across all remounts. Revoking here would break other instances.
         return () => {
-            revoked = true;
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
-                objectUrl = null;
-            }
+            cancelled = true;
+            objectUrl = null;
         };
     });
 
@@ -86,17 +86,25 @@
 
 {#if !isLoaded}
     <div
-        class="flex items-center gap-3 px-3 py-2.5 rounded-2xl w-56 h-14.4 {isMe ? "bg-primary" : "bg-secondary "}"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-2xl w-56 h-14.4 {isMe
+            ? 'bg-primary'
+            : 'bg-secondary '}"
     >
         <div
-            class="size-9 rounded-full animate-pulse shrink-0 {isMe ? "bg-primary-foreground/25" : "bg-primary/20"}"
+            class="size-9 rounded-full animate-pulse shrink-0 {isMe
+                ? 'bg-primary-foreground/25'
+                : 'bg-primary/20'}"
         ></div>
         <div class="flex flex-col gap-2 flex-1">
             <div
-                class="h-1.5 rounded-full animate-pulse w-[55%] [animation-delay:100ms] {isMe ? "bg-primary-foreground/25" : "bg-primary/20"}"
+                class="h-1.5 rounded-full animate-pulse w-[55%] [animation-delay:100ms] {isMe
+                    ? 'bg-primary-foreground/25'
+                    : 'bg-primary/20'}"
             ></div>
             <div
-                class="h-1.5 rounded-full animate-pulse w-[80%] [animation-delay:200ms] {isMe ? "bg-primary-foreground/25" : "bg-primary/20"}"
+                class="h-1.5 rounded-full animate-pulse w-[80%] [animation-delay:200ms] {isMe
+                    ? 'bg-primary-foreground/25'
+                    : 'bg-primary/20'}"
             ></div>
         </div>
     </div>

@@ -10,6 +10,7 @@
   "permissions": [
     "barcode-scanner:default",
     "opener:default",
-    "os:default"
+    "os:default",
+    "fs:default"
   ]
 }

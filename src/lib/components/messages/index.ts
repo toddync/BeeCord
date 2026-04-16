@@ -4,5 +4,6 @@ import Image from "./image.svelte";
 import Text from "./text.svelte";
 import Video from "./video.svelte";
 import Poll from "./poll.svelte";
+import Sticker from "./sticker.svelte";
 
-export { Audio, File, Image, Text, Video, Poll };
+export { Audio, File, Image, Text, Video, Poll, Sticker };

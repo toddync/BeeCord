@@ -1,10 +1,14 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button/index.js";
     import { Input } from "$lib/components/ui/input/index.js";
+    import BeeCord from "$lib/stores/BeeCord.svelte";
     import Matrix from "$lib/stores/Matrix.svelte";
+    import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+    import { readFile } from "@tauri-apps/plugin-fs";
     import { Paperclip, Upload } from "lucide-svelte";
     import { encryptAttachment } from "matrix-encrypt-attachment";
     import * as sdk from "matrix-js-sdk";
+    import { onMount } from "svelte";
     import { toast } from "svelte-sonner";
 
     let {
@@ -12,20 +16,20 @@
         selectedFiles = $bindable(null),
     }: { room: sdk.Room; selectedFiles: FileList | null } = $props();
 
-    let dragCounter = $state(0);
-    let dragging = $derived(dragCounter > 0);
+    let dragging = $state(false);
     let previewUrl: string | null = $state(null);
     let caption = $state("");
-
     let localSelectedFile: File | null = $state(null);
 
+    // Handle files passed in via selectedFiles prop (e.g. from a file picker)
     $effect(() => {
         if (selectedFiles && selectedFiles.length > 0) {
             localSelectedFile = selectedFiles[0];
-            selectedFiles = null; // consume it
+            selectedFiles = null;
         }
     });
 
+    // Keep preview URL in sync with the selected file
     $effect(() => {
         if (localSelectedFile) {
             previewUrl = URL.createObjectURL(localSelectedFile);
@@ -38,27 +42,77 @@
         }
     });
 
-    function onDragEnter(e: DragEvent) {
-        e.preventDefault();
-        dragCounter++;
+    onMount(() => {
+        const webview = getCurrentWebviewWindow();
+
+        // onDragDropEvent returns a Promise<UnlistenFn>
+        const unlistenPromise = webview.onDragDropEvent(async (event) => {
+            const { type } = event.payload;
+
+            if (type === "enter" || type === "over") {
+                // Only show the drag overlay when no file is already staged
+                if (!localSelectedFile) dragging = true;
+            } else if (type === "leave" || type === "cancelled") {
+                dragging = false;
+            } else if (type === "drop") {
+                dragging = false;
+                const paths: string[] = event.payload.paths ?? [];
+                if (paths.length === 0) return;
+
+                const filePath = paths[0];
+
+                try {
+                    // Read raw bytes from disk via the fs plugin
+                    const bytes = await readFile(filePath);
+
+                    // Derive a filename from the path (works on both / and \ separators)
+                    const fileName =
+                        filePath.replace(/\\/g, "/").split("/").pop() ?? "file";
+
+                    // Best-effort MIME type from extension; browser sniffing fills the rest
+                    const mimeType = guessMimeType(fileName);
+
+                    const file = new File([bytes], fileName, {
+                        type: mimeType,
+                    });
+                    localSelectedFile = file;
+                } catch (err) {
+                    console.error("Failed to read dropped file:", err);
+                    toast.error("Could not read the dropped file.");
+                }
+            }
+        });
+
+        // Clean up the Tauri event listener when the component is destroyed
+        return async () => {
+            const unlisten = await unlistenPromise;
+            unlisten();
+        };
+    });
+
+    /** Cheap extension→MIME map; the browser will refine it when creating the File. */
+    function guessMimeType(fileName: string): string {
+        const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+        const map: Record<string, string> = {
+            png: "image/png",
+            jpg: "image/jpeg",
+            jpeg: "image/jpeg",
+            gif: "image/gif",
+            webp: "image/webp",
+            svg: "image/svg+xml",
+            mp4: "video/mp4",
+            webm: "video/webm",
+            mov: "video/quicktime",
+            mp3: "audio/mpeg",
+            ogg: "audio/ogg",
+            wav: "audio/wav",
+            flac: "audio/flac",
+            pdf: "application/pdf",
+        };
+        return map[ext] ?? "application/octet-stream";
     }
 
-    function onDragLeave(e: DragEvent) {
-        dragCounter--;
-    }
-
-    function onDragOver(e: DragEvent) {
-        e.preventDefault();
-    }
-
-    function onDrop(e: DragEvent) {
-        console.log(e)
-        e.preventDefault();
-        dragCounter = 0;
-        if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
-            localSelectedFile = e.dataTransfer.files[0];
-        }
-    }
+    // ── Everything below this line is unchanged ──────────────────────────────
 
     async function generateThumbnail(
         file: File,
@@ -73,19 +127,16 @@
                     const canvas = document.createElement("canvas");
                     let width = img.width;
                     let height = img.height;
-
                     if (width > maxW || height > maxH) {
                         const ratio = Math.min(maxW / width, maxH / height);
                         width = Math.round(width * ratio);
                         height = Math.round(height * ratio);
                     }
-
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     if (!ctx) return resolve(null);
                     ctx.drawImage(img, 0, 0, width, height);
-
                     canvas.toBlob(
                         (blob) => {
                             if (blob)
@@ -111,28 +162,23 @@
                 video.preload = "metadata";
                 video.muted = true;
                 video.playsInline = true;
-
                 video.onloadeddata = () => {
                     video.currentTime = Math.min(1, video.duration / 2 || 0);
                 };
-
                 video.onseeked = () => {
                     const canvas = document.createElement("canvas");
                     let width = video.videoWidth;
                     let height = video.videoHeight;
-
                     if (width > maxW || height > maxH) {
                         const ratio = Math.min(maxW / width, maxH / height);
                         width = Math.round(width * ratio);
                         height = Math.round(height * ratio);
                     }
-
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext("2d");
                     if (!ctx) return resolve(null);
                     ctx.drawImage(video, 0, 0, width, height);
-
                     canvas.toBlob(
                         (blob) => {
                             if (blob)
@@ -173,15 +219,11 @@
         localSelectedFile = null;
 
         const isEncrypted = room.hasEncryptionStateEvent();
-
         const content: Record<string, any> = {
             msgtype: getMsgType(file.type),
             body: textPayload,
             filename: file.name,
-            info: {
-                size: file.size,
-                mimetype: file.type,
-            },
+            info: { size: file.size, mimetype: file.type },
         };
 
         const toastId = toast.loading(`Uploading ${file.name}... 0%`);
@@ -204,12 +246,10 @@
                     };
                     content.info.thumbnail_info = thumbData.info;
                 }
-
                 const arrayBuffer = await file.arrayBuffer();
                 const { data, info: encryptedFileInfo } =
                     await encryptAttachment(arrayBuffer);
                 const encryptedBlob = new Blob([data]);
-
                 const uploadResponse = await Matrix.client.uploadContent(
                     encryptedBlob,
                     {
@@ -224,7 +264,6 @@
                         },
                     },
                 );
-
                 content.file = {
                     ...encryptedFileInfo,
                     url: uploadResponse.content_uri,
@@ -237,7 +276,6 @@
                     content.info.thumbnail_url = thumbUploadRes.content_uri;
                     content.info.thumbnail_info = thumbData.info;
                 }
-
                 const uploadResponse = await Matrix.client.uploadContent(file, {
                     progressHandler: (progress) => {
                         const percent = Math.round(
@@ -262,19 +300,15 @@
     }
 </script>
 
-<svelte:window
-    ondragenter={onDragEnter}
-    ondragleave={onDragLeave}
-    ondragover={onDragOver}
-    ondrop={onDrop}
-/>
+<!-- No more svelte:window drag handlers needed — Tauri handles them -->
 
 {#if dragging && !localSelectedFile}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
-        class="absolute inset-0 z-100 flex flex-col items-center justify-center bg-primary/10 backdrop-blur-sm transition-all"
-        ondragover={(e) => e.preventDefault()}
-        ondrop={onDrop}
+        class="absolute inset-0 z-100 flex flex-col items-center justify-center bg-primary/10 backdrop-blur-sm transition-all {![
+            'android',
+            'ios',
+            'web',
+        ].includes(BeeCord.platform) && 'h-[calc(100svh-32px)] mt-auto'}"
     >
         <div
             class="flex flex-col items-center justify-center p-12 rounded-2xl border-4 border-dashed border-primary bg-background/80 shadow-2xl"
@@ -294,7 +328,7 @@
 
 {#if localSelectedFile}
     <div
-        class="absolute inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+        class="absolute inset-0 z-100 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
     >
         <div
             class="bg-card w-full max-w-lg rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[90svh]"

@@ -19,17 +19,23 @@
     function getMessageComponent(event: sdk.MatrixEvent) {
         const eventType = event.getType();
         if (eventType === "org.matrix.msc3381.poll.start") return types.Poll;
+        if (eventType === "m.sticker") return types.Sticker;
 
         const msgtype = event.getContent().msgtype || "m.text";
         const key = msgtype.split(".")[1];
-        const capitalized = key ? key.charAt(0).toUpperCase() + key.slice(1) : "";
+        const capitalized = key
+            ? key.charAt(0).toUpperCase() + key.slice(1)
+            : "";
         return (types as Record<string, any>)[capitalized] ?? types.Text;
     }
 
     const MessageComponent = getMessageComponent(event);
 </script>
 
-<ChatBubble variant={isMe ? "sent" : "received"} class={isMe ? "ml-auto" : "mr-auto"}>
+<ChatBubble
+    variant={isMe ? "sent" : "received"}
+    class={isMe ? "ml-auto" : "mr-auto"}
+>
     {#if !isMe}
         <Avatar
             id={member!.userId!}

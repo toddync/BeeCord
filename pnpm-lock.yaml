@@ -17,12 +17,21 @@ importers:
       '@matrix-org/matrix-sdk-crypto-wasm':
         specifier: ^18.0.0
         version: 18.0.0
+      '@tanstack/svelte-hotkeys':
+        specifier: ^0.9.1
+        version: 0.9.1(svelte@5.53.12)
+      '@tanstack/svelte-virtual':
+        specifier: ^3.13.23
+        version: 3.13.23(svelte@5.53.12)
       '@tauri-apps/api':
         specifier: ^2
         version: 2.10.1
       '@tauri-apps/plugin-barcode-scanner':
         specifier: ~2
         version: 2.4.4
+      '@tauri-apps/plugin-fs':
+        specifier: ~2.4.5
+        version: 2.4.5
       '@tauri-apps/plugin-http':
         specifier: ~2.5.7
         version: 2.5.7
@@ -44,6 +53,12 @@ importers:
       bs58:
         specifier: ^6.0.0
         version: 6.0.0
+      file-icons:
+        specifier: ^0.0.0
+        version: 0.0.0
+      file-icons-js:
+        specifier: github:websemantics/file-icons-js
+        version: https://codeload.github.com/websemantics/file-icons-js/tar.gz/8b397223dc14fa57600f1b06c787dfd2107c4449
       flowbite-svelte:
         specifier: ^1.31.0
         version: 1.31.0(rollup@2.80.0)(svelte@5.53.12)(tailwindcss@4.2.1)
@@ -1252,9 +1267,29 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7
 
+  '@tanstack/hotkeys@0.7.1':
+    resolution: {integrity: sha512-YHVO1z6wnvUCu7bg870Kv5k2D+FIuIOSIcbN0dAmTTsJ3mLMDLwcTVx0qVaq+SZp1B514JJTqGVstvUp85yIpQ==}
+    engines: {node: '>=18'}
+
+  '@tanstack/store@0.9.3':
+    resolution: {integrity: sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw==}
+
+  '@tanstack/svelte-hotkeys@0.9.1':
+    resolution: {integrity: sha512-y4Th0egC64BkJ8kOnPaPZc5ZQS7Sapc2w5+zd/xUAcRITiNMbflglLeK2+TiuyZ2hbpsBMaIwL9wL4hVwrI7Nw==}
+    peerDependencies:
+      svelte: ^5.25.0
+
+  '@tanstack/svelte-virtual@3.13.23':
+    resolution: {integrity: sha512-kUFdKtevYPhuv9bN2/NhE8zCr6pO3lP2a4xYwyzwqvNZim0EMHdq9nKMFgS4rMHE9Iacdj4+PwMYDfRZ45a/+Q==}
+    peerDependencies:
+      svelte: ^3.48.0 || ^4.0.0 || ^5.0.0
+
   '@tanstack/table-core@8.21.3':
     resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
     engines: {node: '>=12'}
+
+  '@tanstack/virtual-core@3.13.23':
+    resolution: {integrity: sha512-zSz2Z2HNyLjCplANTDyl3BcdQJc2k1+yyFoKhNRmCr7V7dY8o8q5m8uFTI1/Pg1kL+Hgrz6u3Xo6eFUB7l66cg==}
 
   '@tauri-apps/api@2.10.1':
     resolution: {integrity: sha512-hKL/jWf293UDSUN09rR69hrToyIXBb8CjGaWC7gfinvnQrBVvnLr08FeFi38gxtugAVyVcTa5/FD/Xnkb1siBw==}
@@ -1337,6 +1372,9 @@ packages:
 
   '@tauri-apps/plugin-barcode-scanner@2.4.4':
     resolution: {integrity: sha512-uXvyMI8UgQjSrGxzTU5isNoQarMGRxFmTmb4TsgiWZHf/g7LsIyAQCwoFShjax0fXCK5mdVKDOvlkfOr21fo6g==}
+
+  '@tauri-apps/plugin-fs@2.4.5':
+    resolution: {integrity: sha512-dVxWWGE6VrOxC7/jlhyE+ON/Cc2REJlM35R3PJX3UvFw2XwYhLGQVAIyrehenDdKjotipjYEVc4YjOl3qq90fA==}
 
   '@tauri-apps/plugin-http@2.5.7':
     resolution: {integrity: sha512-+F2lEH/c9b0zSsOXKq+5hZNcd9F4IIKCK1T17RqMwpCmVnx2aoqY8yIBccCd25HTYUb3j6NPVbRax/m00hKG8A==}
@@ -1881,6 +1919,13 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  file-icons-js@https://codeload.github.com/websemantics/file-icons-js/tar.gz/8b397223dc14fa57600f1b06c787dfd2107c4449:
+    resolution: {tarball: https://codeload.github.com/websemantics/file-icons-js/tar.gz/8b397223dc14fa57600f1b06c787dfd2107c4449}
+    version: 1.1.0
+
+  file-icons@0.0.0:
+    resolution: {integrity: sha512-uFn59j3n1rKEdZTBD8+x5/Z42Wk7oz8KEctm3ICQnrnZtzlg1oYHzMQuzHVd6qfiHcFp7IT3VHlEo5vSIVTa8g==}
 
   filelist@1.0.6:
     resolution: {integrity: sha512-5giy2PkLYY1cP39p17Ech+2xlpTRL9HLspOfEgm0L6CwBXBTgsK5ou0JtzYuepxkaQ/tvhCFIJ5uXo0OrM2DxA==}
@@ -4274,7 +4319,25 @@ snapshots:
       tailwindcss: 4.2.1
       vite: 6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.1)
 
+  '@tanstack/hotkeys@0.7.1':
+    dependencies:
+      '@tanstack/store': 0.9.3
+
+  '@tanstack/store@0.9.3': {}
+
+  '@tanstack/svelte-hotkeys@0.9.1(svelte@5.53.12)':
+    dependencies:
+      '@tanstack/hotkeys': 0.7.1
+      svelte: 5.53.12
+
+  '@tanstack/svelte-virtual@3.13.23(svelte@5.53.12)':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.23
+      svelte: 5.53.12
+
   '@tanstack/table-core@8.21.3': {}
+
+  '@tanstack/virtual-core@3.13.23': {}
 
   '@tauri-apps/api@2.10.1': {}
 
@@ -4326,6 +4389,10 @@ snapshots:
       '@tauri-apps/cli-win32-x64-msvc': 2.10.1
 
   '@tauri-apps/plugin-barcode-scanner@2.4.4':
+    dependencies:
+      '@tauri-apps/api': 2.10.1
+
+  '@tauri-apps/plugin-fs@2.4.5':
     dependencies:
       '@tauri-apps/api': 2.10.1
 
@@ -4937,6 +5004,10 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.3):
     optionalDependencies:
       picomatch: 4.0.3
+
+  file-icons-js@https://codeload.github.com/websemantics/file-icons-js/tar.gz/8b397223dc14fa57600f1b06c787dfd2107c4449: {}
+
+  file-icons@0.0.0: {}
 
   filelist@1.0.6:
     dependencies:

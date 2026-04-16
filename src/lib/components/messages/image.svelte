@@ -16,48 +16,51 @@
         isMe: boolean;
         timestamp: string;
     } = $props();
+    // svelte-ignore state_referenced_locally
     const content: ImageContent = event.getContent();
 
-    let objectUrl = $state<string | null>(null);
-    let h = Math.min(
-        content.info?.h || content.info?.thumbnail_info?.h || 80,
-        384,
-    );
-    let w = Math.min(
-        content.info?.w || content.info?.thumbnail_info?.w || 80,
-        384,
-    );
+    let height = $state(0);
 
+    let objectUrl = $state<string | null>(null);
+    let h = content.info?.h || content.info?.thumbnail_info?.h || 80;
+    let w = content.info?.w || content.info?.thumbnail_info?.w || 80;
     $effect(() => {
-        let revoked = false;
+        let cancelled = false;
 
         Rooms.loadMediaObjectUrl(content).then((url) => {
-            if (!revoked && url) objectUrl = url;
+            if (!cancelled && url) objectUrl = url;
         });
+
         return () => {
-            revoked = true;
-            if (objectUrl) {
-                URL.revokeObjectURL(objectUrl);
-                objectUrl = null;
-            }
+            cancelled = true;
+            objectUrl = null;
         };
     });
 </script>
 
-<ChatBubbleMessage class="min-w-20" variant={isMe ? "sent" : "received"}>
-    {#if objectUrl}
-        <img
-            src={objectUrl}
-            alt={content.body}
-            height={h}
-            width={w}
-            class="rounded-md object-contain max-h-96"
-        />
-    {:else}
-        <div
-            class="rounded-md bg-muted animate-pulse max-h-96 max-w-96"
-            style=" height: {h}px; width: {w}px"
-        ></div>
-    {/if}
-    <ChatBubbleTimestamp class="whitespace-pre" {timestamp} />
-</ChatBubbleMessage>
+<div bind:clientHeight={height} class="flex">
+    <ChatBubbleMessage class="min-w-20" variant={isMe ? "sent" : "received"}>
+        {#if objectUrl}
+            <img
+                height={h}
+                width={w}
+                src={objectUrl}
+                alt={content.body}
+                class="rounded-md object-contain"
+            />
+
+            {#if content.filename && content.filename != content.body}
+                <p class="break-word whitespace-pre-wrap min-w-12 pt-1">
+                    {content.body}
+                </p>
+            {/if}
+        {:else}
+            <div
+                class="rounded-md bg-muted animate-pulse max-w-96 max-h-96"
+                style="height: {h}px; width: {w}px"
+            ></div>
+        {/if}
+
+        <ChatBubbleTimestamp class="whitespace-pre" {timestamp} />
+    </ChatBubbleMessage>
+</div>

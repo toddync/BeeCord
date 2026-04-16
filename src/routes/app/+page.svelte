@@ -4,6 +4,7 @@
     import Invite from "$lib/components/room-types/invite.svelte";
     import * as Empty from "$lib/components/ui/empty";
     import Rooms from "$lib/stores/Rooms.svelte";
+    import { MessageSquare } from "lucide-svelte";
 </script>
 
 <main class="flex flex-1">
@@ -20,6 +21,16 @@
             {/key}
         {/if}
     {:else}
-        <Empty.Root></Empty.Root>
+        <Empty.Root>
+            <Empty.Media variant="icon">
+                <MessageSquare />
+            </Empty.Media>
+            <Empty.Header>
+                <Empty.Title>No room selected</Empty.Title>
+                <Empty.Description>
+                    Select a room from the sidebar or start a new conversation
+                </Empty.Description>
+            </Empty.Header>
+        </Empty.Root>
     {/if}
 </main>

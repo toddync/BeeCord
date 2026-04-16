@@ -1,39 +1,58 @@
 {
-    "$schema": "../gen/schemas/desktop-schema.json",
-    "identifier": "default",
-    "description": "Capability for the main window",
-    "windows": ["main"],
-    "permissions": [
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    {
+      "identifier": "http:default",
+      "allow": [
         {
-            "identifier": "http:default",
-            "allow": [{ "url": "https://**" }, { "url": "http://**" }]
+          "url": "https://**"
         },
-        "opener:default",
-        "notification:default",
-        "os:default",
-        "core:default",
-        "core:window:allow-close",
-        "core:window:allow-center",
-        "core:window:allow-create",
-        "core:window:allow-set-size",
-        "core:window:allow-maximize",
-        "core:window:allow-minimize",
-        "core:window:allow-set-title",
-        "core:window:allow-set-focus",
-        "core:window:allow-unmaximize",
-        "core:window:allow-is-maximized",
-        "core:window:allow-set-resizable",
-        "core:window:allow-start-dragging",
-        "core:window:allow-is-maximizable",
-        "core:window:allow-set-minimizable",
-        "core:window:allow-toggle-maximize",
-        "core:window:allow-set-maximizable",
-        "core:webview:allow-set-webview-zoom",
-        "core:webview:allow-set-webview-size",
-        "core:window:allow-internal-toggle-maximize",
-        "store:default",
-        "store:allow-set",
-        "store:allow-get",
-        "store:allow-save"
-    ]
+        {
+          "url": "http://**"
+        }
+      ]
+    },
+    "opener:default",
+    "notification:default",
+    "os:default",
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-center",
+    "core:window:allow-create",
+    "core:window:allow-set-size",
+    "core:window:allow-maximize",
+    "core:window:allow-minimize",
+    "core:window:allow-set-title",
+    "core:window:allow-set-focus",
+    "core:window:allow-unmaximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-set-resizable",
+    "core:window:allow-start-dragging",
+    "core:window:allow-is-maximizable",
+    "core:window:allow-set-minimizable",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-set-maximizable",
+    "core:webview:allow-set-webview-zoom",
+    "core:webview:allow-set-webview-size",
+    "core:window:allow-internal-toggle-maximize",
+    "store:default",
+    "store:allow-set",
+    "store:allow-get",
+    "store:allow-save",
+
+
+        "fs:default",
+        "fs:read-all",
+        "fs:allow-exists",
+        "fs:read-dirs",
+        {
+            "identifier": "fs:scope",
+            "allow": ["**/*"]
+        }
+  ]
 }

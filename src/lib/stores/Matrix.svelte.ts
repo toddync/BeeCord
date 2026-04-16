@@ -14,7 +14,7 @@ class Matrix_ {
     homeserver: string = $state("https://matrix.org");
 
     loading: boolean = $state(true);
-    ready: boolean = $state(true);
+    ready: boolean = $state(false);
     client: sdk.MatrixClient | null = $state(null);
 
     verificationRequest: VerificationRequest | null = $state(null);

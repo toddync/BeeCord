@@ -1,5 +1,5 @@
 [package]
-name = "beecord"
+name = "BeeCord"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
@@ -28,7 +28,8 @@ tauri-plugin-notification = "2"
 tauri = { version = "2", features = [] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
+tauri-plugin-http = { version = "2", features = ["unsafe-headers", "native-tls"] }
+tauri-plugin-fs = "2"
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-barcode-scanner = "2"
