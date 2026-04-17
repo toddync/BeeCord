@@ -191,6 +191,7 @@ class Matrix_ {
         if (this.client) {
             try {
                 this.client.logout();
+                this.client.deleteDevice(this.device!);
                 this.client.stopClient();
                 this.client.store.destroy();
                 this.client.removeAllListeners();

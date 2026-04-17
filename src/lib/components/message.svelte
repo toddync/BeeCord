@@ -4,17 +4,19 @@
     import Avatar from "./avatar.svelte";
     import * as types from "./messages";
     import ChatBubble from "./ui/chat/chat-bubble/chat-bubble.svelte";
+    import { onMount } from "svelte";
 
     let { event, room }: { event: sdk.MatrixEvent; room: sdk.Room } = $props();
 
-    const isMe = event.getSender() === Matrix.client?.getUserId();
-    const msgtype = event.getContent().msgtype || "m.text";
-    const member = room.getMember(event.getSender()!);
-    const timestamp = new Date(event.getTs()).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-    const senderName = member?.name || event.getSender();
+    let isMe = $derived(event.getSender() === Matrix.client?.getUserId());
+    let member = $derived(room.getMember(event.getSender()!));
+    let timestamp = $derived(
+        new Date(event.getTs()).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+        })
+    );
+    let senderName = $derived(member?.name || event.getSender());
 
     function getMessageComponent(event: sdk.MatrixEvent) {
         const eventType = event.getType();
@@ -29,7 +31,26 @@
         return (types as Record<string, any>)[capitalized] ?? types.Text;
     }
 
-    const MessageComponent = getMessageComponent(event);
+    let updateCounter = $state(0);
+
+    onMount(() => {
+        const onDecrypted = (e: sdk.MatrixEvent) => {
+            if (e.getId() === event.getId()) {
+                updateCounter++;
+            }
+        };
+
+        event.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
+
+        return () => {
+            event.removeListener(sdk.MatrixEventEvent.Decrypted, onDecrypted);
+        };
+    });
+
+    let MessageComponent = $derived.by(() => {
+        updateCounter;
+        return getMessageComponent(event);
+    });
 </script>
 
 <ChatBubble
@@ -51,13 +72,15 @@
             </span>
         {/if}
 
-        <!-- svelte-ignore svelte_component_deprecated -->
-        <svelte:component
-            this={MessageComponent}
-            {event}
-            {room}
-            {isMe}
-            {timestamp}
-        />
+        {#key updateCounter}
+            <!-- svelte-ignore svelte_component_deprecated -->
+            <svelte:component
+                this={MessageComponent}
+                {event}
+                {room}
+                {isMe}
+                {timestamp}
+            />
+        {/key}
     </div>
 </ChatBubble>

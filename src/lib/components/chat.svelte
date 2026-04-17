@@ -116,8 +116,8 @@
         } catch (e) {
             console.error(e);
         } finally {
+            updateMessages();
             isPaginating = false;
-            scheduleUpdateMessages();
         }
     }
 

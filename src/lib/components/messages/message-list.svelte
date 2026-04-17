@@ -77,13 +77,14 @@
         const type = event.getType();
         let content = event.getContent();
         const msgtype =
-            type === "org.matrix.msc3381.poll.start" ? type : content.msgtype;
+            type === "org.matrix.msc3381.poll.start" || type === "m.sticker" ? type : content.msgtype;
         const sender: number =
             (event.getSender() !== Matrix.user_id && 16) || 0;
 
         if (
             type === "m.room.message" ||
-            type === "org.matrix.msc3381.poll.start"
+            type === "org.matrix.msc3381.poll.start" ||
+            type === "m.sticker"
         ) {
             switch (msgtype) {
                 case "m.text": {
@@ -137,6 +138,8 @@
                 }
                 case "org.matrix.msc3381.poll.start":
                     return getPollHeight(event, true) + sender;
+                case "m.sticker":
+                    return content.info?.h ?? content.info?.thumbnail_info?.h ?? FALLBACK_HEIGHT
             }
         }
         return FALLBACK_HEIGHT + sender;
@@ -297,7 +300,7 @@
                     $virtualizer.scrollToIndex(anchorIndex, {
                         align: "start",
                     });
-                    
+
                     // Subtract pixel offset
                     if (anchorOffset !== 0 && scrollEl) {
                         scrollEl.scrollTop = scrollEl.scrollTop - anchorOffset;
@@ -362,12 +365,32 @@
         },
     });
 
+    let decryptedCounter = $state(0);
+
+    $effect(() => {
+        const localMessages = messages;
+        const onDecrypted = () => {
+            decryptedCounter++;
+        };
+
+        for (const msg of localMessages) {
+            msg.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
+        }
+
+        return () => {
+            for (const msg of localMessages) {
+                msg.removeListener(sdk.MatrixEventEvent.Decrypted, onDecrypted);
+            }
+        };
+    });
+
     // Keep virtualizer in sync with reactive state without recreating it.
     $effect(() => {
         // Reading containerWidth and messages.length makes this effect
         // re-run whenever either changes.
         const _w = containerWidth;
         const _c = messages.length;
+        const _d = decryptedCounter;
         untrack(() => {
             $virtualizer.setOptions({
                 count: _c,
@@ -376,7 +399,22 @@
                     return getMessageHeight(messages[index]);
                 },
             });
+            $virtualizer.measure();
         });
+    });
+    // Auto-paginate if container isn't filled.
+    $effect(() => {
+        const _c = messages.length;
+        const _w = containerWidth;
+        const _p = isPaginating;
+
+        if (!_p && onPaginate) {
+            tick().then(() => {
+                if (scrollEl && scrollEl.scrollHeight <= scrollEl.clientHeight + 100) {
+                    onPaginate();
+                }
+            });
+        }
     });
 </script>
 
@@ -410,7 +448,7 @@
     </div>
 
     {#if typing.length > 0}
-        <div class="flex-shrink-0 px-4 pb-4 pt-2">
+        <div class="shrink-0 px-4 pb-4 pt-2">
             <ChatBubble variant="received">
                 {#each typing as typer, i (typer)}
                     {@const member = room.room_?.getMember(typer)!}
