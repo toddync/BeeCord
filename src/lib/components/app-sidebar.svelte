@@ -11,7 +11,7 @@
     import Sidebars from "$lib/stores/Sidebars.svelte";
     import { hexagons7 } from "@lucide/lab";
     import { createHotkey } from "@tanstack/svelte-hotkeys";
-    import { Icon, Plus } from "lucide-svelte";
+    import { Icon, Plus, LogOut } from "lucide-svelte";
     import Avatar from "./avatar.svelte";
 
     let { children } = $props();
@@ -119,7 +119,7 @@
     <Tooltip.Root>
         <Tooltip.Trigger
             onclick={() => (createSpaceOpen = true)}
-            class="mb-3 cursor-pointer relative"
+            class="cursor-pointer relative"
         >
             <div
                 class="w-10 h-10 aspect-square mx-auto rounded-[12px] overflow-hidden flex items-center justify-center bg-transparent border border-dashed border-primary/40 hover:bg-muted/50 hover:border-primary transition-all group"
@@ -130,6 +130,22 @@
             </div>
         </Tooltip.Trigger>
         <Tooltip.Content side="right">Create Space</Tooltip.Content>
+    </Tooltip.Root>
+
+    <Tooltip.Root>
+        <Tooltip.Trigger
+            onclick={() => Matrix.logout()}
+            class="mb-3 cursor-pointer relative mt-auto"
+        >
+            <div
+                class="w-10 h-10 aspect-square mx-auto rounded-[12px] overflow-hidden flex items-center justify-center bg-transparent hover:bg-red-500/10 hover:text-red-500 transition-all group"
+            >
+                <LogOut
+                    class="text-red-500/70 size-5 group-hover:text-red-500 transition-colors"
+                />
+            </div>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="right">Log Out</Tooltip.Content>
     </Tooltip.Root>
 </main>
 

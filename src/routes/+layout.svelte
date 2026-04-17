@@ -39,8 +39,9 @@
                 await Matrix.init();
 
                 if (BeeCord.platform != "web") {
-                    let { getCurrentWebview } =
-                        await import("@tauri-apps/api/webview");
+                    let { getCurrentWebview } = await import(
+                        "@tauri-apps/api/webview"
+                    );
 
                     getCurrentWebview().setZoom(
                         (await BeeCord.get<number>("zoom")) || 1,
@@ -80,7 +81,7 @@
     }}
 />
 
-<Toaster expand richColors/>
+<Toaster expand richColors />
 
 {#if ["android", "ios", "web"].includes(BeeCord.platform)}
     <main class="h-svh w-svw overflow-hidden flex">
@@ -90,7 +91,7 @@
 {:else}
     <main class="grid grid-template-rows-[32px_1fr] h-svh w-svw">
         <TopBar />
-        <main class="flex-1 overflow-hidden flex">
+        <main class="flex-1 h-[calc(100svh-32px)] overflow-hidden flex">
             {@render children()}
             <VerificationModal />
         </main>

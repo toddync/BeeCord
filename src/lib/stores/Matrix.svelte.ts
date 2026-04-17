@@ -54,7 +54,7 @@ class Matrix_ {
     }
 
     hasSession(): boolean {
-        return this.device != null && this.access_token != null;
+        return !!this.device && !!this.access_token;
     }
 
     async login() {
@@ -77,6 +77,7 @@ class Matrix_ {
 
         this.device = device_id;
         this.access_token = access_token;
+        this.user_id = user_id;
 
         // if ("serviceWorker" in navigator) {
         //     navigator.serviceWorker.ready.then((reg) => {
@@ -193,7 +194,7 @@ class Matrix_ {
                 this.client.stopClient();
                 this.client.store.destroy();
                 this.client.removeAllListeners();
-            } catch (e) {}
+            } catch (e) { }
         }
         this.client = null;
         this.ready = false;
@@ -209,6 +210,7 @@ class Matrix_ {
         window.indexedDB.deleteDatabase("matrix-js-sdk::matrix-sdk-crypto");
         window.indexedDB.deleteDatabase("matrix-js-sdk:matrix-js-sdk:default");
         window.indexedDB.deleteDatabase("matrix-js-sdk:crypto");
+        window.indexedDB.deleteDatabase("BeeCord_Auth");
 
         window.location.reload();
     }
@@ -240,7 +242,7 @@ class Matrix_ {
             } else {
                 console.log("No key backup found.");
             }
-        } catch(e) {
+        } catch (e) {
             console.error("Error checking key backup", e);
         }
     }
@@ -252,7 +254,7 @@ class Matrix_ {
             const status = await crypto.getSecretStorageStatus();
             this.isSecretStorageReady = status.ready;
             this.hasSecretStorage = status.defaultKeyId !== null;
-        } catch(e) {
+        } catch (e) {
             console.error("Error checking secret storage", e);
         }
     }
